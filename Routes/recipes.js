@@ -1,79 +1,24 @@
-const express = require('express');
-const Recipe = require('../Models/Recipe');
-const { verifyToken } = require('../middleware/auth');
+import express from "express";
+import cors from "cors";
+import mongoose from "mongoose";
+import { userRouter } from "./routes/user.js";
+import { recipesRouter } from "./routes/recipes.js";
 
-const router = express.Router();
+const app = express();
 
-// Create Recipe
-router.post('/', verifyToken, async (req, res) => {
-  try {
-    const newRecipe = new Recipe({ ...req.body, user: req.user.id });
-    await newRecipe.save();
-    res.status(201).json(newRecipe);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+app.use(express.json());
+app.use(cors());
 
-// Get All Recipes
-router.get('/', async (req, res) => {
-  try {
-    const recipes = await Recipe.find().populate('user', 'username');
-    res.json(recipes);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+app.use("/auth", userRouter);
+app.use("/recipes", recipesRouter);
 
-// Get Recipe by ID
-router.get('/search', async (req, res) => {
-    try {
-      const { title, ingredients, category, cookingTime, difficulty } = req.query;
-  
-      let filter = {};
-  
-      if (title) {
-        filter.title = { $regex: title, $options: 'i' }; // Case-insensitive search
-      }
-      if (category) {
-        filter.category = category;
-      }
-      if (cookingTime) {
-        filter.cookingTime = { $lte: parseInt(cookingTime) }; // Filter recipes within cooking time
-      }
-      if (difficulty) {
-        filter.difficulty = difficulty;
-      }
-      if (ingredients) {
-        filter.ingredients = { $all: ingredients.split(',') }; // Search for recipes that include all ingredients
-      }
-  
-      const recipes = await Recipe.aggregate([{ $match: filter }]);
-      res.json(recipes);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  });
-  
+mongoose.connect(
+  "mongodb+srv://demomongo123:demomongo123@cluster0.bwegp.mongodb.net/recipetest?retryWrites=true&w=majority&appName=Cluster0",
+  {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  }).then(
+    console.log("DB connected...")
+  )
 
-// Update Recipe
-router.put('/:id', verifyToken, async (req, res) => {
-  try {
-    const updatedRecipe = await Recipe.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(updatedRecipe);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Delete Recipe
-router.delete('/:id', verifyToken, async (req, res) => {
-  try {
-    await Recipe.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Recipe deleted' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-module.exports = router;
+app.listen(3001, () => console.log("Server started"));
